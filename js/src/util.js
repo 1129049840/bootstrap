@@ -1,3 +1,5 @@
+import Event from './dom/event'
+
 /**
  * --------------------------------------------------------------------------
  * Bootstrap (v4.0.0-beta): util.js
@@ -5,7 +7,7 @@
  * --------------------------------------------------------------------------
  */
 
-const Util = (($) => {
+const Util = (() => {
 
 
   /**
@@ -34,19 +36,6 @@ const Util = (($) => {
     return (obj[0] || obj).nodeType
   }
 
-  function getSpecialTransitionEndEvent() {
-    return {
-      bindType: transition.end,
-      delegateType: transition.end,
-      handle(event) {
-        if ($(event.target).is(this)) {
-          return event.handleObj.handler.apply(this, arguments) // eslint-disable-line prefer-rest-params
-        }
-        return undefined
-      }
-    }
-  }
-
   function transitionEndTest() {
     if (window.QUnit) {
       return false
@@ -62,34 +51,12 @@ const Util = (($) => {
       }
     }
 
-    return false
+    throw new Error('Browser not supported')
   }
 
-  function transitionEndEmulator(duration) {
-    let called = false
-
-    $(this).one(Util.TRANSITION_END, () => {
-      called = true
-    })
-
-    setTimeout(() => {
-      if (!called) {
-        Util.triggerTransitionEnd(this)
-      }
-    }, duration)
-
-    return this
-  }
-
-  function setTransitionEndSupport() {
+  (() => {
     transition = transitionEndTest()
-
-    $.fn.emulateTransitionEnd = transitionEndEmulator
-
-    if (Util.supportsTransitionEnd()) {
-      $.event.special[Util.TRANSITION_END] = getSpecialTransitionEndEvent()
-    }
-  }
+  })()
 
 
   /**
@@ -100,7 +67,7 @@ const Util = (($) => {
 
   const Util = {
 
-    TRANSITION_END: 'bsTransitionEnd',
+    TRANSITION_END: transition.end,
 
     getUID(prefix) {
       do {
@@ -117,8 +84,8 @@ const Util = (($) => {
       }
 
       try {
-        const $selector = $(selector)
-        return $selector.length > 0 ? selector : null
+        const elements = document.querySelectorAll(selector)
+        return elements.length > 0 ? selector : null
       } catch (error) {
         return null
       }
@@ -129,11 +96,27 @@ const Util = (($) => {
     },
 
     triggerTransitionEnd(element) {
-      $(element).trigger(transition.end)
+      Event.trigger(element, transition.end)
     },
 
     supportsTransitionEnd() {
-      return Boolean(transition)
+      return typeof transition.end === 'string'
+    },
+
+    emulateTransitionEnd(element, duration) {
+      let called = false
+
+      Event.one(element, transition.end, () => {
+        called = true
+      })
+
+      setTimeout(() => {
+        if (!called) {
+          Util.triggerTransitionEnd(element)
+        }
+      }, duration)
+
+      return this
     },
 
     typeCheckConfig(componentName, config, configTypes) {
@@ -155,10 +138,8 @@ const Util = (($) => {
     }
   }
 
-  setTransitionEndSupport()
-
   return Util
 
-})(jQuery)
+})()
 
 export default Util
